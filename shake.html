@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lắc lì xì</title>
+
+<style>
+html,body{
+    margin:0;
+    height:100%;
+    overflow:hidden;
+    background:#ffecd2;
+    font-family:Arial;
+}
+
+/* ===== UNLOCK ===== */
+#unlock{
+    position:fixed;
+    inset:0;
+    z-index:10;
+    background:rgba(0,0,0,.85);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+    font-size:20px;
+}
+
+/* ===== SHAKE ===== */
+#shake-screen{
+    position:fixed;
+    inset:0;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+}
+#packet{
+    width:85vw;
+    max-width:420px;
+}
+#money{
+    position:absolute;
+    width:120px;
+    opacity:0;
+    transform:translateY(40px) scale(.6);
+    pointer-events:none;
+}
+#btn{
+    margin-top:20px;
+    padding:14px 30px;
+    font-size:18px;
+    border-radius:30px;
+    border:none;
+    background:linear-gradient(45deg,#ff5733,#d6336c);
+    color:#fff;
+}
+
+/* ===== RESULT ===== */
+#result{
+    display:none;
+    position:fixed;
+    inset:0;
+    text-align:center;
+    padding-top:35vh;
+}
+.amount{
+    font-size:28px;
+    font-weight:bold;
+    color:#d6336c;
+}
+
+/* ===== ANIMATION ===== */
+@keyframes shake{
+    0%{transform:translateX(-18px)}
+    50%{transform:translateX(18px)}
+    100%{transform:translateX(0)}
+}
+@keyframes moneyOut{
+    to{
+        opacity:1;
+        transform:translateY(-150px) scale(1.1)
+    }
+}
+.money-out{
+    animation:moneyOut .8s ease-out forwards;
+}
+</style>
+</head>
+
+<body>
+
+<div id="unlock">
+👆 Chạm màn hình để bắt đầu<br>
+📱 Sau đó lắc điện thoại
+</div>
+
+<div id="shake-screen">
+    <img id="packet" src="./baolixi.jpg">
+    <img id="money" src="./money.png">
+    <button id="btn">🧧 Lắc lì xì</button>
+</div>
+
+<div id="result">
+    <p id="msg"></p>
+    <p class="amount" id="amount"></p>
+</div>
+
+<!-- AUDIO -->
+<audio id="bgm" src="./bgm.mp3" loop></audio>
+<audio id="shakeSound" src="./shake.mp3"></audio>
+<audio id="openSound" src="./open.mp3"></audio>
+
+<script>
+/* ================= GUARD ================= */
+(function(){
+    const ok = sessionStorage.getItem("username")
+           && sessionStorage.getItem("userType")
+           && sessionStorage.getItem("fromIndex");
+    if(!ok){
+        sessionStorage.clear();
+        location.replace("index.html");
+        return;
+    }
+    sessionStorage.removeItem("fromIndex");
+})();
+
+/* ================= DATA ================= */
+const name = sessionStorage.getItem("username");
+const type = sessionStorage.getItem("userType");
+
+const messages = {
+    kid:[
+        `Chúc ${name} ngoan ngoãn, hay ăn chóng lớn 🎈`,
+        `Chúc ${name} luôn vui vẻ, mạnh khỏe 🧸`
+    ],
+    youth:[
+        `Chúc ${name} năm mới bùng nổ năng lượng 🔥`,
+        `Tiền vô như nước, tình duyên như ý 💖`
+    ],
+    adult:[
+        `Chúc ${name} an khang thịnh vượng 🧧`,
+        `Gia đình bình an, sức khỏe dồi dào 🍀`
+    ]
+};
+
+const amounts = ["20,000 VNĐ","50,000 VNĐ","100,000 VNĐ"];
+
+/* ================= STATE ================= */
+let unlocked=false;
+let shaking=false;
+let finished=false;
+let stopTimer=null;
+
+/* ================= ELEMENT ================= */
+const packet=document.getElementById("packet");
+const money=document.getElementById("money");
+const bgm=document.getElementById("bgm");
+const shakeSound=document.getElementById("shakeSound");
+const openSound=document.getElementById("openSound");
+
+/* ================= iOS SAFE UNLOCK ================= */
+async function unlockApp(){
+    if(unlocked) return;
+    unlocked=true;
+
+    // xin quyền motion (iOS)
+    if(typeof DeviceMotionEvent==="function"
+    && typeof DeviceMotionEvent.requestPermission==="function"){
+        try{
+            const p=await DeviceMotionEvent.requestPermission();
+            if(p!=="granted"){
+                unlocked=false;
+                return;
+            }
+        }catch{
+            unlocked=false;
+            return;
+        }
+    }
+
+    // unlock audio
+    [bgm,shakeSound,openSound].forEach(a=>{
+        a.muted=true;
+        a.play().then(()=>{
+            a.pause();
+            a.currentTime=0;
+            a.muted=false;
+        }).catch(()=>{});
+    });
+
+    bgm.volume=0.4;
+    bgm.play().catch(()=>{});
+
+    document.getElementById("unlock").style.display="none";
+
+    document.body.removeEventListener("click",unlockApp);
+    document.body.removeEventListener("touchend",unlockApp);
+    document.body.removeEventListener("pointerup",unlockApp);
+}
+
+/* 🔥 BẮT TRÊN BODY – iOS BẮT BUỘC */
+document.body.addEventListener("click",unlockApp,{passive:true});
+document.body.addEventListener("touchend",unlockApp,{passive:true});
+document.body.addEventListener("pointerup",unlockApp,{passive:true});
+
+/* ================= SHAKE EFFECT ================= */
+function startShake(){
+    if(shaking||finished) return;
+    shaking=true;
+    packet.style.animation="shake .25s infinite";
+    shakeSound.loop=true;
+    shakeSound.play().catch(()=>{});
+    navigator.vibrate?.([80,40,80]);
+}
+function stopShake(){
+    packet.style.animation="";
+    shakeSound.pause();
+    shakeSound.currentTime=0;
+    shaking=false;
+}
+
+/* ================= OPEN ================= */
+function openLixi(){
+    if(finished) return;
+    finished=true;
+    stopShake();
+
+    navigator.vibrate?.([120,60,120]);
+    openSound.currentTime = 0;
+    openSound.play().catch(()=>{});
+    
+    /* ⏱️ chỉ cho kêu 2.5s */
+    setTimeout(() => {
+        openSound.pause();
+        openSound.currentTime = 0;
+    }, 2500);
+
+    money.classList.add("money-out");
+
+    // đánh dấu tên đã chơi
+    const data=JSON.parse(localStorage.getItem("lixi_played_names")||"{}");
+    data[name.toLowerCase()]=true;
+    localStorage.setItem("lixi_played_names",JSON.stringify(data));
+
+    setTimeout(()=>{
+        document.getElementById("shake-screen").style.display="none";
+        msg.innerText = messages[type][Math.floor(Math.random()*messages[type].length)];
+        amount.innerText = "💰 " + amounts[Math.floor(Math.random()*amounts.length)];
+        result.style.display="block";
+        sessionStorage.clear();
+    },800);
+}
+
+/* ================= BUTTON ================= */
+btn.onclick=()=>{
+    if(!unlocked||finished) return;
+    startShake();
+    setTimeout(openLixi,3500);
+};
+
+/* ================= DEVICE SHAKE (X/Y) ================= */
+window.addEventListener("devicemotion",e=>{
+    if(!unlocked||finished) return;
+    const a=e.accelerationIncludingGravity;
+    if(!a) return;
+
+    const force = Math.abs(a.x) + Math.abs(a.y); // ❌ bỏ Z
+    if(force>16){
+        startShake();
+        clearTimeout(stopTimer);
+        stopTimer=setTimeout(openLixi,600);
+    }
+});
+</script>
+
+</body>
+</html>
