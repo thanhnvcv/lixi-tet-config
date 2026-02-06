@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Config Lì Xì</title>
+</head>
+<body>
+
+<h2>Cấu hình mới</h2>
+
+<input id="cfgId" placeholder="ID config (vd: tet2026)">
+<br><br>
+
+<textarea id="messages" rows="6" cols="40"
+placeholder="Mỗi dòng 1 câu chúc"></textarea>
+<br><br>
+
+<textarea id="amounts" rows="4" cols="40"
+placeholder="Mỗi dòng 1 số tiền"></textarea>
+<br><br>
+
+<button onclick="save()">Lưu & Sang Index</button>
+
+<script src="config-store.js"></script>
+<script>
+initConfigStore();
+
+function save(){
+  const id = cfgId.value.trim();
+  if(!id) return alert("Nhập ID config");
+
+  const msg = messages.value.split("\n");
+  const amt = amounts.value.split("\n");
+
+  saveConfig(id,{
+    name: id,
+    messages:{
+      kid: msg, youth: msg, adult: msg
+    },
+    amounts:{
+      kid: amt, youth: amt, adult: amt
+    }
+  });
+
+  location.href = "index.html";
+}
+</script>
+</body>
+</html>
